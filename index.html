@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Identificação de Circunscrição</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .form-group input:focus {
+            border-color: #66afe9;
+            outline: none;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        #map {
+            height: 400px;
+            width: 100%;
+            margin-top: 20px;
+            border-radius: 8px;
+        }
+        #result {
+            margin-top: 20px;
+            font-size: 18px;
+            font-weight: bold;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Identificação de Circunscrição</h1>
+        <div class="form-group">
+            <label for="logradouro">Logradouro:</label>
+            <input id="logradouro" type="text" placeholder="Ex: Rua 16">
+        </div>
+        <div class="form-group">
+            <label for="bairro">Bairro:</label>
+            <input id="bairro" type="text" placeholder="Ex: Vinhais">
+        </div>
+        <div class="form-group">
+            <label for="cidade">Cidade:</label>
+            <input id="cidade" type="text" value="São Luís" readonly>
+        </div>
+        <button onclick="geocodeAddress()">Verificar Circunscrição</button>
+        <div id="map"></div>
+        <p id="result"></p>
+    </div>
+
+    <script>
+        var map;
+        var polygons; // Armazena os polígonos das zonas
+
+        // Inicializa o mapa
+        function initMap() {
+            map = L.map('map').setView([-2.53874, -44.28266], 12); // Coordenadas de São Luís/MA
+
+            // Adiciona o tile layer do OpenStreetMap
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+
+            // Carrega os polígonos das zonas (GeoJSON)
+            fetch('./zonas.geojson') // Substitua pelo URL do seu GeoJSON
+                .then(response => response.json())
+                .then(data => {
+                    polygons = data.features; // Armazena os polígonos
+                    // Adiciona os polígonos ao mapa (opcional)
+                    L.geoJSON(data, {
+                        style: function (feature) {
+                            return { color: feature.properties.color }; // Define cores para cada zona
+                        }
+                    }).addTo(map);
+                });
+        }
+
+        // Converte o endereço em coordenadas usando Nominatim (OpenStreetMap)
+        function geocodeAddress() {
+            var logradouro = document.getElementById('logradouro').value;
+            var bairro = document.getElementById('bairro').value;
+            var cidade = document.getElementById('cidade').value;
+
+            // Combina os campos em uma única string de busca
+            var enderecoCompleto = `${logradouro}, ${bairro}, ${cidade}`;
+
+            fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(enderecoCompleto)}&addressdetails=1`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.length > 0) {
+                        var location = [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+                        map.setView(location, 15); // Centraliza o mapa no local
+                        L.marker(location).addTo(map); // Adiciona um marcador
+
+                        // Verifica se o ponto está dentro de uma das zonas
+                        checkCircunscricao(location);
+                    } else {
+                        alert('Endereço não encontrado.');
+                    }
+                });
+        }
+
+        // Verifica em qual polígono a localização está
+        function checkCircunscricao(coordinates) {
+            var point = turf.point([coordinates[1], coordinates[0]]); // Turf.js espera [longitude, latitude]
+            var result = "O endereço está fora das zonas de circunscrição."; // Mensagem padrão
+
+            polygons.forEach(function(polygon) {
+                if (turf.booleanPointInPolygon(point, polygon)) {
+                    result = "O imóvel está na " + polygon.properties.name; // Atualiza a mensagem se estiver dentro de uma zona
+                }
+            });
+
+            document.getElementById('result').innerText = result;
+        }
+
+        // Inicializa o mapa ao carregar a página
+        initMap();
+    </script>
+</body>
+</html>
