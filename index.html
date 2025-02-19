@@ -167,7 +167,10 @@
 
         @media (max-width: 768px) {
             .header {
-                flex-direction: column;
+                flex-direction: column-reverse;
+            }
+            .header img {
+                height: 100px;
             }
 
             .main-content {
@@ -190,7 +193,7 @@
             #map {
                 height: 300px; /* Ajuste o mapa para caber melhor na tela */
             }
-
+            
             #submit {
                 padding: 14px;
             }
@@ -311,16 +314,20 @@
 
         // Verifica em qual polígono a localização está
         function checkCircunscricao(coordinates) {
-            var point = turf.point([coordinates[1], coordinates[0]]); // Turf.js espera [longitude, latitude]
-            var result = "O endereço está fora das zonas de circunscrição."; // Mensagem padrão
+        var point = turf.point([coordinates[1], coordinates[0]]); // Turf.js espera [longitude, latitude]
+        var result = "O endereço está fora das zonas de circunscrição."; // Mensagem padrão
 
-            polygons.forEach(function(polygon) {
-                if (turf.booleanPointInPolygon(point, polygon)) {
-                    result = "O imóvel está na " + polygon.properties.name; // Atualiza a mensagem se estiver dentro de uma zona
-                }
-            });
+        polygons.forEach(function(polygon) {
+            if (turf.booleanPointInPolygon(point, polygon)) {
+                result = "O imóvel está na " + polygon.properties.name; // Atualiza a mensagem se estiver dentro de uma zona
+            }
+        });
 
-            document.getElementById('result').innerText = result;
+        // Atualiza o texto do resultado
+        document.getElementById('result').innerText = result;
+
+        // Rola a página até o elemento #result
+        document.getElementById('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
         // Inicializa o mapa ao carregar a página
